@@ -11,9 +11,6 @@ services:
   # Redis guarda o cadastro pendente de confirmação (com TTL).
   # O Spring Boot reconhece a imagem "redis" e configura a conexão sozinho.
   redis:
-    image: redis:alpine
-    container_name: homeshare_redis
+    image: 'redis:latest'
     ports:
-      - "6379:6379"
-    restart: always
-    command: redis-server --appendonly yes
+      - '6379'

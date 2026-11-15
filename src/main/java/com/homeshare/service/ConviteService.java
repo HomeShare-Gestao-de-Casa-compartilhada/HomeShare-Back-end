@@ -65,7 +65,7 @@ public class ConviteService {
         convite.setCasa(lider.getCasa());
         conviteRepository.save(convite);
 
-        return ConviteDto.Response.de(convite, agora);
+        return ConviteDto.Response.de(convite, agora, linkDe(convite.getCodigo()));
     }
 
     @Transactional(readOnly = true)
@@ -73,7 +73,7 @@ public class ConviteService {
         acesso.exigirLider(casaId, usuarioId);
         LocalDateTime agora = LocalDateTime.now(clock);
         return conviteRepository.findByCasaIdOrderByDataCriacaoDesc(casaId).stream()
-                .map(c -> ConviteDto.Response.de(c, agora))
+                .map(c -> ConviteDto.Response.de(c, agora, linkDe(c.getCodigo())))
                 .toList();
     }
 
@@ -160,6 +160,15 @@ public class ConviteService {
             }
         }
         throw new IllegalStateException("Não foi possível gerar um código de convite único.");
+    }
+
+    /** Link pronto para compartilhar: FRONTEND_URL + /?convite=CODIGO */
+    private String linkDe(String codigo) {
+        String base = props.frontendUrl();
+        if (base.endsWith("/")) {
+            base = base.substring(0, base.length() - 1);
+        }
+        return base + "/?convite=" + codigo;
     }
 
     private String normalizarCodigo(String codigo) {

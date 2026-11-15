@@ -5,5 +5,5 @@ spring:
       enabled: false
 server:
   error:
-      include-message: never
-      include-stacktrace: never
+    include-message: never
+    include-stacktrace: never

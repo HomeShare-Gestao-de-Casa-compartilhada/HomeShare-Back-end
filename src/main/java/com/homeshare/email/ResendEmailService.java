@@ -3,11 +3,9 @@ package com.homeshare.email;
 import com.homeshare.config.AppProperties;
 import com.homeshare.exception.BusinessException;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.client.JdkClientHttpRequestFactory;
-import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestClientResponseException;
@@ -19,14 +17,12 @@ import java.util.Map;
 
 /**
  * Envia e-mails pela API REST do Resend (POST /emails).
- * Ativo quando app.mail.provider = resend (padrão).
+ * Escolhido em EmailConfig quando app.mail.provider = resend (padrão).
  *
  * Enquanto você não tem domínio verificado no Resend, ele só entrega para o e-mail
  * dono da conta. Por isso existe app.mail.override-to: se preenchido, TODO e-mail
  * é redirecionado para esse endereço (o destinatário real aparece no assunto).
  */
-@Service
-@ConditionalOnProperty(prefix = "app.mail", name = "provider", havingValue = "resend")
 @Slf4j
 public class ResendEmailService implements EmailService {
 

@@ -1,3 +1,19 @@
+# Segredos: NUNCA versionar
 .env
-.idea
-target
+*.env
+!.env.example
+http/http-client.private.env.json
+
+# Maven
+target/
+!.mvn/wrapper/maven-wrapper.jar
+
+# IntelliJ
+.idea/
+*.iml
+*.iws
+out/
+
+# Logs / SO
+*.log
+.DS_Store

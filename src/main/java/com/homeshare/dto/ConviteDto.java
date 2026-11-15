@@ -28,15 +28,16 @@ public final class ConviteDto {
             LocalDateTime dataCriacao,
             MembroDto.Resumo geradoPor,
             MembroDto.Resumo usadoPor,
-            LocalDateTime dataUso) {
+            LocalDateTime dataUso,
+            String link) {
 
-        public static Response de(Convite c, LocalDateTime agora) {
+        public static Response de(Convite c, LocalDateTime agora, String link) {
             boolean expirado = !c.getValidade().isAfter(agora);
             boolean usado = c.getUsadoPor() != null;
             boolean valido = c.getStatus() == StatusConvite.ATIVO && !expirado && !usado;
             return new Response(c.getId(), c.getCodigo(), c.getValidade(), c.getStatus(), expirado, usado, valido,
                     c.getDataCriacao(), MembroDto.Resumo.de(c.getGeradoPor()),
-                    MembroDto.Resumo.de(c.getUsadoPor()), c.getDataUso());
+                    MembroDto.Resumo.de(c.getUsadoPor()), c.getDataUso(), link);
         }
     }
 
