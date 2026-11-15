@@ -1,0 +1,278 @@
+### HomeShare - testes no HTTP Client do IntelliJ
+### Escolha o ambiente "dev" no canto superior do editor.
+### Ordem sugerida: register -> (pegue o token no e-mail) -> confirm -> login -> casas...
+### O login guarda o JWT em {{token}} automaticamente; os demais pedidos já o usam.
+
+### 1) Cadastro (vai para o Redis e dispara o e-mail)
+POST {{host}}/api/auth/register
+Content-Type: application/json
+
+{
+  "nome": "Glauber",
+  "email": "glauber@exemplo.com",
+  "senha": "senha-segura-123"
+}
+
+### 2) Confirmação (cole o token recebido por e-mail)
+POST {{host}}/api/auth/confirm
+Content-Type: application/json
+
+{
+  "token": "COLE_O_TOKEN_AQUI"
+}
+
+### 3) Login (guarda o token)
+POST {{host}}/api/auth/login
+Content-Type: application/json
+
+{
+  "email": "glauber@exemplo.com",
+  "senha": "senha-segura-123"
+}
+
+> {%
+  client.global.set("token", response.body.accessToken);
+%}
+
+### Perfil
+GET {{host}}/api/usuarios/me
+Authorization: Bearer {{token}}
+
+### ---------------- CASAS ----------------
+
+### Criar casa (você vira líder)
+POST {{host}}/api/casas
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{ "nome": "Casa da Faculdade" }
+
+> {% client.global.set("casaId", response.body.id); %}
+
+### Minhas casas
+GET {{host}}/api/casas
+Authorization: Bearer {{token}}
+
+### Membros da casa
+GET {{host}}/api/casas/{{casaId}}/membros
+Authorization: Bearer {{token}}
+
+### Gerar convite (validadeHoras é opcional)
+POST {{host}}/api/casas/{{casaId}}/convites
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{ "validadeHoras": 24 }
+
+> {% client.global.set("codigoConvite", response.body.codigo); %}
+
+### Listar convites (líder)
+GET {{host}}/api/casas/{{casaId}}/convites
+Authorization: Bearer {{token}}
+
+### Prévia do convite (quem recebeu o código)
+GET {{host}}/api/convites/{{codigoConvite}}
+Authorization: Bearer {{token}}
+
+### Entrar na casa com o código (faça login com OUTRO usuário antes)
+POST {{host}}/api/convites/{{codigoConvite}}/entrar
+Authorization: Bearer {{token}}
+
+### Transferir liderança (troque o id pelo membroId do novo líder)
+PUT {{host}}/api/casas/{{casaId}}/lideranca
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{ "novoLiderMembroId": 2 }
+
+### Expulsar morador
+DELETE {{host}}/api/casas/{{casaId}}/membros/2
+Authorization: Bearer {{token}}
+
+### Sair da casa
+POST {{host}}/api/casas/{{casaId}}/sair
+Authorization: Bearer {{token}}
+
+### ---------------- TAREFAS ----------------
+
+### Criar tarefa (ajuste o prazo para o futuro)
+POST {{host}}/api/casas/{{casaId}}/tarefas
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "titulo": "Lavar a louça",
+  "descricao": "Pia e fogão",
+  "prazo": "2026-12-31T20:00:00",
+  "prioridade": "URGENTE"
+}
+
+> {% client.global.set("tarefaId", response.body.id); %}
+
+### Tarefas da casa (filtros: status, responsavelId, prioridade)
+GET {{host}}/api/casas/{{casaId}}/tarefas?status=PENDENTE
+Authorization: Bearer {{token}}
+
+### Minhas tarefas
+GET {{host}}/api/casas/{{casaId}}/tarefas/minhas
+Authorization: Bearer {{token}}
+
+### Concluir tarefa
+POST {{host}}/api/casas/{{casaId}}/tarefas/{{tarefaId}}/concluir
+Authorization: Bearer {{token}}
+
+### Histórico (quem fez o quê e quando)
+GET {{host}}/api/casas/{{casaId}}/tarefas/historico?pagina=0&tamanho=20
+Authorization: Bearer {{token}}
+
+### Editar tarefa (líder)
+PUT {{host}}/api/casas/{{casaId}}/tarefas/{{tarefaId}}
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "titulo": "Lavar a louça e limpar o fogão",
+  "descricao": "Pia e fogão",
+  "prazo": "2026-12-31T21:00:00",
+  "prioridade": "NORMAL"
+}
+
+### Apagar (cancelar) tarefa (líder)
+DELETE {{host}}/api/casas/{{casaId}}/tarefas/{{tarefaId}}
+Authorization: Bearer {{token}}
+
+### ---------------- EVENTOS ----------------
+
+### Criar evento (líder)
+POST {{host}}/api/casas/{{casaId}}/eventos
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "titulo": "Reunião de moradores",
+  "data": "2026-12-05",
+  "horario": "19:30",
+  "descricao": "Combinar a divisão da limpeza"
+}
+
+### Calendário
+GET {{host}}/api/casas/{{casaId}}/eventos?de=2026-12-01&ate=2026-12-31
+Authorization: Bearer {{token}}
+
+### ---------------- AVISOS / REGRAS / CONTATOS ----------------
+
+### Publicar aviso (líder)
+POST {{host}}/api/casas/{{casaId}}/avisos
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{ "recado": "Vou viajar no fim de semana." }
+
+### Listar avisos
+GET {{host}}/api/casas/{{casaId}}/avisos
+Authorization: Bearer {{token}}
+
+### Criar regra (líder)
+POST {{host}}/api/casas/{{casaId}}/regras
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{ "titulo": "Silêncio", "texto": "Silêncio após as 22h." }
+
+### Listar regras
+GET {{host}}/api/casas/{{casaId}}/regras
+Authorization: Bearer {{token}}
+
+### Criar contato (líder)
+POST {{host}}/api/casas/{{casaId}}/contatos
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{ "nome": "Seu José", "funcao": "Encanador", "telefone": "(16) 99999-0000" }
+
+### Listar contatos
+GET {{host}}/api/casas/{{casaId}}/contatos
+Authorization: Bearer {{token}}
+
+### ---------------- ITENS QUE FALTAM ----------------
+
+### Adicionar item
+POST {{host}}/api/casas/{{casaId}}/itens
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{ "nome": "Papel higiênico", "quantidade": 12 }
+
+> {% client.global.set("itemId", response.body.id); %}
+
+### Listar itens (status opcional: FALTANDO | COMPRADO)
+GET {{host}}/api/casas/{{casaId}}/itens?status=FALTANDO
+Authorization: Bearer {{token}}
+
+### Marcar como comprado
+POST {{host}}/api/casas/{{casaId}}/itens/{{itemId}}/comprar
+Authorization: Bearer {{token}}
+
+### ---------------- ESPAÇOS E RESERVAS ----------------
+
+### Criar espaço (líder)
+POST {{host}}/api/casas/{{casaId}}/espacos
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{ "nome": "Lavanderia", "tipo": "LAVANDERIA" }
+
+> {% client.global.set("espacoId", response.body.id); %}
+
+### Reservar (ajuste as datas para o futuro)
+POST {{host}}/api/casas/{{casaId}}/espacos/{{espacoId}}/reservas
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{ "inicio": "2026-12-10T14:00:00", "fim": "2026-12-10T16:00:00" }
+
+> {% client.global.set("reservaId", response.body.id); %}
+
+### Listar reservas
+GET {{host}}/api/casas/{{casaId}}/reservas?espacoId={{espacoId}}
+Authorization: Bearer {{token}}
+
+### Cancelar reserva
+DELETE {{host}}/api/casas/{{casaId}}/reservas/{{reservaId}}
+Authorization: Bearer {{token}}
+
+### ---------------- GASTOS FIXOS ----------------
+
+### Criar gasto dividindo igualmente entre os moradores ativos
+POST {{host}}/api/casas/{{casaId}}/gastos
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{ "descricao": "Aluguel", "valorTotal": 1500.00, "mesReferencia": "2026-12-01" }
+
+### Criar gasto com parcelas definidas (a soma precisa bater com o total)
+POST {{host}}/api/casas/{{casaId}}/gastos
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "descricao": "Internet",
+  "valorTotal": 120.00,
+  "mesReferencia": "2026-12-01",
+  "parcelas": [ { "membroId": 1, "valor": 120.00 } ]
+}
+
+### Gastos do mês
+GET {{host}}/api/casas/{{casaId}}/gastos?mes=2026-12
+Authorization: Bearer {{token}}
+
+### Minhas parcelas
+GET {{host}}/api/casas/{{casaId}}/gastos/minhas-parcelas
+Authorization: Bearer {{token}}
+
+### Marcar parcela como paga (checkbox)
+PATCH {{host}}/api/casas/{{casaId}}/gastos/parcelas/1/pagamento
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{ "pago": true }

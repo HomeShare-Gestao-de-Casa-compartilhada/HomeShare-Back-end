@@ -1,0 +1,9 @@
+# Ative com: SPRING_PROFILES_ACTIVE=prod
+spring:
+  docker:
+    compose:
+      enabled: false
+server:
+  error:
+      include-message: never
+      include-stacktrace: never

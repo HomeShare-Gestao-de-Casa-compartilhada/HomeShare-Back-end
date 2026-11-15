@@ -1,0 +1,49 @@
+spring:
+  application:
+    name: homeshare
+  config:
+    # Lê o arquivo .env da raiz do projeto (se existir). Assim você não precisa
+    # configurar variáveis de ambiente no IntelliJ nem instalar plugin.
+    import: optional:file:.env[.properties]
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: validate
+    properties:
+      hibernate:
+        # Evita o problema de N+1 carregando associações lazy em lotes
+        default_batch_fetch_size: 50
+  # Em dev, Postgres e Redis sobem pelo compose.yaml e a conexão é configurada
+  # automaticamente (spring-boot-docker-compose). Em produção use variáveis:
+  # SPRING_DATASOURCE_URL / _USERNAME / _PASSWORD e SPRING_DATA_REDIS_HOST / _PORT / _PASSWORD.
+
+server:
+  port: 8080
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+
+app:
+  timezone: America/Sao_Paulo
+  frontend-url: ${FRONTEND_URL:http://localhost:3000}
+  jwt:
+    secret: ${JWT_SECRET}
+    issuer: homeshare-api
+    expiration-minutes: 120
+  cadastro:
+    token-ttl-minutes: 15
+    cooldown-seconds: 60
+  convite:
+    validade-padrao-horas: 48
+    validade-maxima-horas: 720
+  cors:
+    allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:3000,http://localhost:5173}
+  mail:
+    provider: ${MAIL_PROVIDER:resend}
+    api-key: ${RESEND_API_KEY:}
+    api-url: https://api.resend.com
+    from: ${MAIL_FROM:HomeShare <onboarding@resend.dev>}
+    override-to: ${MAIL_OVERRIDE_TO:}
