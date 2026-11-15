@@ -1,90 +1,95 @@
-# HomeShare - Back-end (API)
+# HomeShare (back-end)
 
-API REST para gestão de casas compartilhadas: moradores, tarefas, calendário, reservas de espaços, gastos fixos, avisos, regras, contatos e lista de compras.
+API do HomeShare, o app que a gente fez pro Projeto Integrador pra organizar a vida numa casa compartilhada: quem faz o quê, quem pagou o aluguel, quando a lavanderia está livre, essas coisas.
 
-**Stack:** Java 26 · Spring Boot 4.1.2 · Spring Security (JWT) · Spring Data JPA/Hibernate · PostgreSQL · Flyway · Redis · Resend (e-mail) · Lombok · Maven.
+Feito com Java 26, Spring Boot 4.1.2, PostgreSQL, Redis e Maven. O e-mail de confirmação sai pelo Resend.
 
-## Requisitos
-- JDK 26 (se o Lombok reclamar, use 25 e troque `java.version` no `pom.xml`)
-- Docker Desktop (aberto) - sobe Postgres e Redis pelo `compose.yaml`
-- IntelliJ IDEA (Maven já vem incluído)
-- Conta no [Resend](https://resend.com) (opcional para testes: veja `MAIL_PROVIDER=log`)
+## O que você precisa ter instalado
 
-## Configuração (.env)
-1. Copie `.env.example` para `.env` na raiz do projeto (o `.env` **nunca** vai para o GitHub).
-2. Preencha as variáveis. O Spring lê o `.env` sozinho (`spring.config.import`), sem plugin.
+- JDK 26 (se o Lombok reclamar, instala o 25 e troca o `java.version` no `pom.xml`)
+- Docker Desktop, aberto antes de rodar. É ele que sobe o Postgres e o Redis
+- IntelliJ
 
-| Variável | Para quê | Exemplo |
-|---|---|---|
-| `JWT_SECRET` | Assina os tokens (mín. 32 caracteres). Gere: `openssl rand -hex 48` | `a1b2...` |
-| `MAIL_PROVIDER` | `resend` envia de verdade; `log` só imprime o token no console | `resend` |
-| `RESEND_API_KEY` | Chave da API do Resend | `re_...` |
-| `MAIL_FROM` | Remetente | `HomeShare <onboarding@resend.dev>` |
-| `MAIL_OVERRIDE_TO` | Todo e-mail vai para este endereço (modo teste do Resend). Vazio = envia ao destinatário real | `seu@gmail.com` |
-| `FRONTEND_URL` | Base dos links dos e-mails e dos convites | `http://localhost:3000` |
-| `CORS_ALLOWED_ORIGINS` | Origens do front, separadas por vírgula | `http://localhost:3000` |
+Não precisa instalar banco nenhum na mão. O `compose.yaml` cuida disso e o Spring já se conecta sozinho.
 
-Formato do `.env`: `CHAVE=valor`, sem aspas e sem espaços ao redor do `=`. O nome do arquivo é só `.env`.
+## Configurando o .env
 
-## Como rodar
-1. Abra o Docker Desktop.
-2. Abra o projeto no IntelliJ e carregue o Maven (*Load Maven Project*).
-3. Rode a classe `com.homeshare.HomeShareApplication`.
-4. A API sobe em http://localhost:8080. Na primeira vez o Flyway cria as tabelas.
-5. Teste pelo arquivo `http/homeshare.http` (ambiente `dev`) ou pelo front-end.
+Copia o `.env.example` e renomeia pra `.env`, na mesma pasta do `pom.xml`. Esse arquivo não vai pro GitHub, então pode colocar suas chaves nele sem medo.
 
-Dica: ao parar a aplicação, o Docker é só pausado e seus dados ficam. **Não use `docker compose down`** (apaga o banco). Para zerar de propósito: `docker compose down -v`.
+O exemplo já vem pronto pra testar. Ele usa `MAIL_PROVIDER=log`, que não manda e-mail nenhum: o código de confirmação do cadastro aparece no console do IntelliJ, numa linha com "Token:". Dá pra criar conta e usar o sistema todo sem ter conta no Resend.
 
-Testes: `mvn test` (unitários, não precisam de Docker).
+Se quiser receber o e-mail de verdade, muda pra `MAIL_PROVIDER=resend` e preenche a `RESEND_API_KEY`. Enquanto você não tiver um domínio verificado no Resend, ele só entrega pro e-mail dono da conta, então coloca esse e-mail em `MAIL_OVERRIDE_TO` e todo e-mail do sistema vai pra ele.
 
-## Estrutura
-```
-src/main/java/com/homeshare/
-  config/       propriedades, JWT, segurança/CORS, relógio
-  controller/   rotas REST
-  dto/          records de entrada/saída (com validação)
-  email/        envio (Resend ou log)
-  entity/       entidades JPA (14, espelham o ER v4)
-  enums/        status e tipos
-  exception/    BusinessException + tratamento de erros (ProblemDetail)
-  repository/   Spring Data JPA
-  security/     JwtService, handlers 401/403, SecurityUtils
-  service/      regras de negócio
-  util/         utilitários
-src/main/resources/
-  application.yaml, application-prod.yaml
-  db/migration/V1__criar_schema_inicial.sql
-http/           requisições de teste do IntelliJ
-```
+As variáveis, rapidinho:
 
-## Como funciona
-**Cadastro (Redis):** `POST /api/auth/register` guarda o cadastro (senha já em hash) no Redis por 15 min e envia um token por e-mail; `POST /api/auth/confirm` com o token grava o usuário no PostgreSQL (token de uso único). `POST /api/auth/login` devolve o JWT (2 h).
+- `JWT_SECRET`: segredo que assina o login. Precisa de pelo menos 32 caracteres. Pra gerar um: `openssl rand -hex 48`
+- `MAIL_PROVIDER`: `log` ou `resend`
+- `RESEND_API_KEY`, `MAIL_FROM`, `MAIL_OVERRIDE_TO`: só importam no modo `resend`
+- `FRONTEND_URL`: endereço do front, usado nos links de convite e de confirmação (padrão `http://localhost:3000`)
+- `CORS_ALLOWED_ORIGINS`: de onde o front pode chamar a API
 
-**Convites (entrar numa casa):** o líder gera um convite em `POST /api/casas/{id}/convites`. A resposta já traz `link` pronto (`FRONTEND_URL/?convite=CODIGO`) e `codigo`. Quem recebe abre o link, faz login/cadastro e entra com `POST /api/convites/{codigo}/entrar`. O convite é de uso único, tem validade (padrão 48 h, máx. 30 dias) e pode ser cancelado.
+Formato é `CHAVE=valor`, sem aspas e sem espaço em volta do `=`.
 
-**Regras principais:** o morador só acessa a casa em que mora; o líder é único; se o líder sai, o morador mais antigo assume (sem ninguém, a casa é encerrada); reservas não podem se sobrepor; a soma das parcelas de um gasto é igual ao total. Lista completa em `ROADMAP.md`.
+Se o Spring não achar o `.env`, quase sempre é um destes: o arquivo ficou como `.env.txt` (no Windows, liga a opção de mostrar extensões pra ver), ele está dentro de `src` em vez de ao lado do `pom.xml`, ou o `application.yaml` não tem a linha `config.import: optional:file:.env[.properties]`. Também dá pra preencher tudo em *Run > Edit Configurations > Environment variables* no IntelliJ. No IntelliJ o `.env` aparece como texto puro, sem cor. Isso é normal.
 
-## Rotas
-Todas exigem `Authorization: Bearer <token>`, exceto `/api/auth/**`. Tabela completa no `ROADMAP.md` (seção 4) e exemplos prontos em `http/homeshare.http`.
+## Rodando
 
-Erros seguem o formato `ProblemDetail` (`title`, `status`, `detail`; validação traz também `erros` por campo).
+1. Abre o Docker Desktop.
+2. Abre o projeto no IntelliJ e deixa o Maven carregar.
+3. Roda a classe `HomeShareApplication`.
+4. A API sobe em http://localhost:8080. Na primeira vez o Flyway cria as tabelas sozinho.
 
-## Produção
-- Ative o perfil: `SPRING_PROFILES_ACTIVE=prod` (desliga o Docker Compose).
-- Defina `SPRING_DATASOURCE_URL/USERNAME/PASSWORD` e `SPRING_DATA_REDIS_HOST/PORT/PASSWORD`.
-- Use `MAIL_PROVIDER=resend` com domínio verificado e deixe `MAIL_OVERRIDE_TO` vazio.
-- `JWT_SECRET` forte e `CORS_ALLOWED_ORIGINS` com o domínio real do front.
+Pra testar sem front, o arquivo `http/homeshare.http` tem uma requisição pronta pra cada rota. Escolhe o ambiente `dev` e vai apertando o play.
 
-## Problemas comuns
-| Erro | Causa |
-|---|---|
-| `Could not resolve placeholder 'JWT_SECRET'` | `.env` ausente ou rodando fora da raiz do projeto |
-| `missing table [xxx]` | sobrou uma `@Entity` antiga no projeto: só as 14 de `entity/` devem existir |
-| `Could not find or load main class` | confira a classe `HomeShareApplication` e rode `Maven > clean` |
-| Falha de conexão (Postgres/Redis) | Docker Desktop fechado |
-| `RESEND_API_KEY não configurada` | preencha a chave ou use `MAIL_PROVIDER=log` |
-| 403 do Resend | remetente/domínio não verificado ou chave inválida |
-| 401 em tudo | token expirado ou sem `Bearer` |
+Quando você para a aplicação, o Docker só pausa os containers e os dados continuam lá. Só não usa `docker compose down`, porque isso apaga o banco. Se quiser zerar de propósito, é `docker compose down -v`.
 
-## Segurança
-Chaves e senhas só no `.env` (ignorado pelo Git). Se alguma chave vazar, apague e gere outra. Senhas ficam em BCrypt; tokens de cadastro ficam no Redis apenas como hash.
+Os testes rodam com `mvn test` e não precisam do Docker.
+
+## Como o cadastro funciona
+
+A pessoa preenche nome, e-mail e senha em `POST /api/auth/register`. Nada vai pro banco ainda: os dados ficam guardados no Redis por 15 minutos (a senha já criptografada) e um código é enviado por e-mail. Quando ela manda esse código em `POST /api/auth/confirm`, aí sim o usuário é gravado no PostgreSQL. O código só funciona uma vez. Depois é só fazer login em `POST /api/auth/login` e usar o token que volta.
+
+## Convidando gente pra casa
+
+O líder gera um convite em `POST /api/casas/{id}/convites`. A resposta já traz o `link` pronto pra mandar no WhatsApp. Quem recebe abre o link, entra (ou cria a conta) e aceita. Cada convite serve pra uma pessoa só e vale 48 horas por padrão, mas o líder pode cancelar antes.
+
+## Algumas regras que vale conhecer
+
+- Cada morador só enxerga a casa em que mora.
+- Só existe um líder por casa. Se ele sair, o morador mais antigo assume. Se não sobrar ninguém, a casa é encerrada.
+- O líder não consegue expulsar a si mesmo.
+- Duas reservas do mesmo espaço não podem se sobrepor.
+- Num gasto fixo, a soma das parcelas tem que bater com o valor total.
+
+A lista completa, com a rota de cada coisa, está no `ROADMAP.md`.
+
+## Onde fica cada coisa
+
+Dentro de `src/main/java/com/homeshare`:
+
+- `controller`: as rotas
+- `service`: as regras de negócio
+- `repository`: o acesso ao banco
+- `entity` e `enums`: as 14 tabelas e os status
+- `dto`: o formato do que entra e sai da API
+- `security` e `config`: login com JWT, CORS e configurações
+- `email`: envio do e-mail
+- `exception`: tratamento dos erros
+
+As tabelas são criadas por `src/main/resources/db/migration/V1__criar_schema_inicial.sql`.
+
+## Se der erro
+
+- **`Could not resolve placeholder 'JWT_SECRET'`**: o `.env` não foi encontrado. Veja a parte do `.env` lá em cima.
+- **`missing table [alguma coisa]`**: sobrou uma `@Entity` velha no projeto. Só as 14 da pasta `entity` devem existir.
+- **`Could not find or load main class`**: confere se a classe é `HomeShareApplication` e roda `clean` no Maven.
+- **Erro de conexão com Postgres ou Redis**: o Docker Desktop está fechado.
+- **`RESEND_API_KEY não configurada`**: preenche a chave ou volta pro `MAIL_PROVIDER=log`.
+- **Nenhum `EmailService` encontrado**: falta o `EmailConfig.java` na pasta `email`, ou o `target` está velho. Apaga ele e reconstrói.
+- **401 em tudo**: o token venceu (dura 2 horas) ou faltou o `Bearer` na frente.
+
+## Subindo pra produção
+
+Ativa o perfil com `SPRING_PROFILES_ACTIVE=prod`, que desliga o Docker Compose, e passa a conexão com o banco e o Redis por variáveis de ambiente (`SPRING_DATASOURCE_URL`, `SPRING_DATASOURCE_USERNAME`, `SPRING_DATASOURCE_PASSWORD`, `SPRING_DATA_REDIS_HOST`, `SPRING_DATA_REDIS_PORT`). Troca o `JWT_SECRET`, usa um domínio verificado no Resend e deixa o `MAIL_OVERRIDE_TO` vazio.
+
+E nunca sobe chave de API pro GitHub. Se uma vazar, apaga e gera outra.
